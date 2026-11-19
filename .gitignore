@@ -1,0 +1,56 @@
+# Dependencias
+node_modules/
+.pnp
+.pnp.js
+
+# Compilación y producción (Vite / React)
+dist/
+dist-ssr/
+build/
+*.local
+
+# Variables de entorno y credenciales sensibles
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+
+# Registros (Logs)
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Cachés y herramientas de desarrollo
+.vite/
+.eslintcache
+.stylelintcache
+*.tsbuildinfo
+.temp/
+.tmp/
+
+# Archivos de configuración de editores / IDEs
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Archivos del Sistema Operativo
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
+$RECYCLE.BIN/

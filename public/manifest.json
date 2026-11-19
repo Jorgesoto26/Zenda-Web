@@ -1,0 +1,39 @@
+{
+  "id": "/",
+  "name": "Zendapp — Cobranza y Créditos",
+  "short_name": "Zendapp",
+  "description": "Plataforma de gestión de créditos, cobranzas en campo y control de caja",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F8F9FB",
+  "theme_color": "#EE272D",
+  "categories": ["business", "finance", "productivity"],
+  "icons": [
+    {
+      "src": "/assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/logo_round.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
