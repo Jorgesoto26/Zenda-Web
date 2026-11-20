@@ -8,6 +8,7 @@ import BottomNav from './components/BottomNav';
 
 // Pantallas
 import LoginScreen from './screens/LoginScreen';
+import PinLockScreen from './components/PinLockScreen';
 import SuspendedAccountScreen from './screens/billing/SuspendedAccountScreen';
 import Payments from './screens/payments/Payments';
 import CrearCliente from './screens/createClient/CrearCliente';
@@ -83,7 +84,7 @@ function PwaInstallBanner() {
 }
 
 function AppContent() {
-  const { session, loading, rol, isSuspended } = useAuth();
+  const { session, loading, rol, isSuspended, isPinLocked, hasPin } = useAuth();
   const location = useLocation();
 
   useEffect(() => {
@@ -106,6 +107,11 @@ function AppContent() {
         </p>
       </div>
     );
+  }
+
+  // Si hay PIN configurado y la app está bloqueada, mostrar PinLockScreen
+  if (hasPin && isPinLocked) {
+    return <PinLockScreen />;
   }
 
   if (!session) {

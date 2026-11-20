@@ -7,14 +7,18 @@ import { useAuth } from '../context/AuthContext';
 import { useTranslation, SUPPORTED_LANGUAGES } from '../i18n';
 import { zendapp } from '../theme/zendappTheme';
 import { appAlert } from '../components/AppAlert';
+import { hasConfiguredPin, savePin } from '../services/pinService';
 
 export default function LoginScreen() {
-  const { setAuthSession } = useAuth();
+  const { setAuthSession, refreshPinStatus } = useAuth();
   const { t, language, changeLanguage, currentLanguage } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [langModalVisible, setLangModalVisible] = useState(false);
+  const [pinSetupModalVisible, setPinSetupModalVisible] = useState(false);
+  const [initialPin, setInitialPin] = useState('');
+  const [pendingAuth, setPendingAuth] = useState(null);
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -52,10 +56,41 @@ export default function LoginScreen() {
             : t('common.error');
         appAlert(title, result.message);
       } else if (result.session) {
-        setAuthSession(result.session, result.profile);
+        const pinExists = await hasConfiguredPin();
+        if (!pinExists) {
+          setPendingAuth({
+            session: result.session,
+            profile: result.profile,
+          });
+          setPinSetupModalVisible(true);
+        } else {
+          setAuthSession(result.session, result.profile);
+        }
       }
     } catch (e) {
       appAlert(t('common.error'), e.message || t('login.credentials_sub'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConfirmPinSetup = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    const cleanPin = initialPin.trim();
+    if (!cleanPin || cleanPin.length !== 5 || isNaN(Number(cleanPin))) {
+      return appAlert('PIN incompleto', 'Debes ingresar exactamente 5 dígitos numéricos.');
+    }
+    setLoading(true);
+    try {
+      await savePin(cleanPin);
+      if (refreshPinStatus) await refreshPinStatus();
+      setPinSetupModalVisible(false);
+      setInitialPin('');
+      if (pendingAuth) {
+        setAuthSession(pendingAuth.session, pendingAuth.profile);
+      }
+    } catch (err) {
+      appAlert('Error', err.message || 'No se pudo guardar el PIN');
     } finally {
       setLoading(false);
     }
@@ -428,6 +463,67 @@ export default function LoginScreen() {
                       <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     ) : (
                       t('login.register_btn') || 'Registrarse'
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* Modal Creación de PIN Inicial al registrar o iniciar por primera vez */}
+      {pinSetupModalVisible &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 animate-fadeIn">
+            <div
+              className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-100 animate-slideUp"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="w-12 h-1.5 bg-slate-300 rounded-full mx-auto mb-4 sm:hidden" />
+              <div className="flex flex-col items-center text-center mb-5">
+                <div className="w-12 h-12 rounded-2xl bg-red-50 text-[#EE272D] flex items-center justify-center mb-3">
+                  <Icon name="key" size={22} />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900">
+                  Crea tu PIN de Seguridad
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  Define un código de 5 dígitos para acceder rápidamente a Zendapp y proteger la información de tus clientes en este dispositivo.
+                </p>
+              </div>
+
+              <form onSubmit={handleConfirmPinSetup} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    PIN de 5 dígitos numéricos
+                  </label>
+                  <div className="flex items-center bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-3 transition-all focus-within:border-[#EE272D] focus-within:ring-2 focus-within:ring-[#EE272D]/20">
+                    <Icon name="lock" size={17} className="text-[#EE272D] mr-2.5" />
+                    <input
+                      type="password"
+                      maxLength={5}
+                      placeholder="Ingresa 5 números (ej. 12345)"
+                      value={initialPin}
+                      onChange={(e) => setInitialPin(e.target.value.replace(/[^0-9]/g, '').slice(0, 5))}
+                      className="w-full bg-transparent text-sm text-slate-900 font-bold tracking-widest outline-none"
+                      required
+                      autoFocus
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    disabled={!initialPin || initialPin.length !== 5 || loading}
+                    className="w-full py-3.5 px-4 rounded-2xl bg-[#EE272D] hover:bg-[#d91f25] text-white font-bold text-sm shadow-md transition-all flex items-center justify-center cursor-pointer disabled:opacity-50"
+                  >
+                    {loading ? (
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      'Establecer PIN y Continuar'
                     )}
                   </button>
                 </div>

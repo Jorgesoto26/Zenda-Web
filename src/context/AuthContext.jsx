@@ -2,6 +2,12 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { supabase, ensureAuthenticatedSession } from '../lib/supabase';
 import { appAlert } from '../components/AppAlert';
 import { getBillingStatus } from '../services/billingService';
+import {
+  hasConfiguredPin,
+  recordBackgroundTimestamp,
+  shouldLockOnForeground,
+  clearPin,
+} from '../services/pinService';
 
 const AuthContext = createContext(null);
 
@@ -10,6 +16,8 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [billingStatus, setBillingStatus] = useState(null);
+  const [isPinLocked, setIsPinLocked] = useState(true);
+  const [hasPin, setHasPin] = useState(false);
 
   const fetchUserData = useCallback(async (userId) => {
     try {
@@ -90,6 +98,14 @@ export function AuthProvider({ children }) {
 
     const init = async () => {
       try {
+        const pinExists = await hasConfiguredPin();
+        if (mounted) {
+          setHasPin(pinExists);
+          setIsPinLocked(pinExists);
+        }
+      } catch {}
+
+      try {
         const isLoggedOut = localStorage.getItem('app_logged_out');
         if (isLoggedOut === 'true') {
           if (mounted) {
@@ -135,6 +151,37 @@ export function AuthProvider({ children }) {
     };
   }, [fetchUserData]);
 
+  // Listener de visibilidad de pestaña para bloqueo por inactividad
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'hidden') {
+        await recordBackgroundTimestamp();
+      } else if (document.visibilityState === 'visible') {
+        const mustLock = await shouldLockOnForeground();
+        if (mustLock) {
+          setIsPinLocked(true);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
+  const unlockApp = useCallback(() => {
+    setIsPinLocked(false);
+  }, []);
+
+  const lockApp = useCallback(() => {
+    setIsPinLocked(true);
+  }, []);
+
+  const refreshPinStatus = useCallback(async () => {
+    const configured = await hasConfiguredPin();
+    setHasPin(configured);
+    return configured;
+  }, []);
+
   const setAuthSession = useCallback((sess, p) => {
     localStorage.removeItem('app_logged_out');
     setProfile(p || null);
@@ -143,9 +190,23 @@ export function AuthProvider({ children }) {
     if (p) {
       localStorage.setItem('cached_profile', JSON.stringify(p));
     }
+    hasConfiguredPin()
+      .then((has) => {
+        setHasPin(has);
+        if (has) setIsPinLocked(false);
+      })
+      .catch(() => {});
   }, []);
 
   const signOut = useCallback(async () => {
+    // 1. Limpiar PIN configurado
+    try {
+      await clearPin();
+      setHasPin(false);
+      setIsPinLocked(false);
+    } catch {}
+
+    // 2. Marcar cierre de sesión y desloguear
     localStorage.setItem('app_logged_out', 'true');
     try {
       await supabase.auth.signOut();
@@ -184,6 +245,11 @@ export function AuthProvider({ children }) {
     isReadOnly: billingStatus?.is_read_only === true,
     isSuspended: billingStatus?.is_suspended === true,
     refreshBillingStatus,
+    isPinLocked,
+    hasPin,
+    unlockApp,
+    lockApp,
+    refreshPinStatus,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
